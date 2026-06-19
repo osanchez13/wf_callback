@@ -43,7 +43,7 @@ input:focus, select:focus, textarea:focus { border-color: #3b82f6; }
 .hlabel { font-size: 11px; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; margin-top: 16px; }
 .pc { border: 1px solid #1e2535; border-radius: 10px; padding: 16px; margin-bottom: 12px; }
 .pc.ap { border-color: #166534; background: #0a1f12; }
-.dr { display: flex; gap: 10px; margin-bottom: 10px; }
+.dr { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
 .db { flex: 1; min-width: 0; }
 .dl { font-size: 10px; color: #475569; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 3px; }
 .dv { font-size: 12px; background: #0a0d14; border: 1px solid #1e2535; border-radius: 6px; padding: 7px 9px; color: #94a3b8; font-family: monospace; min-height: 32px; word-break: break-word; }
@@ -266,8 +266,8 @@ function step3() {
     h += '<div class="pc'+(iap?" ap":"")+'"><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:10px">';
     h += '<div style="font-size:13px;font-weight:600">'+esc(p.taskName||"New Task")+'</div>';
     h += '<span class="ab '+(p.action||"update")+'">'+esc(p.action)+'</span></div>';
-    h += '<div class="dr" style="flex-direction:column"><div class="db"><div class="dl">Current · '+esc(p.field||"")+'</div><div class="dv">'+esc(p.currentValue||"—")+'</div></div>';
-    h += '<div style="color:#334155;font-size:12px;text-align:center;padding:4px 0">↓ proposed</div>';
+    h += '<div class="dr"><div class="db"><div class="dl">Current · '+esc(p.field||"")+'</div><div class="dv">'+esc(p.currentValue||"—")+'</div></div>';
+    h += '<div style="color:#3b82f6;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:3px">↓ Proposed</div>';
     h += '<div class="db"><div class="dl">Proposed</div><div class="dv nw">'+esc(p.proposedValue)+'</div></div></div>';
     h += '<div class="rsn">"'+esc(p.reason||"")+'"</div>';
     h += '<div style="display:flex;gap:8px">';
