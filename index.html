@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html>
+<body>
+<p style="font-family:sans-serif;padding:40px">Connecting to Workfront... this tab will close automatically.</p>
+<script>
+  const code = new URLSearchParams(window.location.search).get("code");
+  if (code && window.opener) {
+    window.opener.postMessage({ type: "WF_CODE", code: code }, "*");
+    setTimeout(function(){ window.close(); }, 1000);
+  }
+</script>
+</body>
+</html>
