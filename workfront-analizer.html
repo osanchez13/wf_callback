@@ -2,346 +2,335 @@
 <html>
 <head>
 <meta charset="utf-8">
-<title>Project Intelligence</title>
+<title>Workfront Exporter</title>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: system-ui, sans-serif; font-size: 14px; background: #0a0d14; color: #e2e8f0; padding: 16px; min-height: 100vh; overflow-x: hidden; }
-.wrap { max-width: 680px; margin: 0 auto; }
-.topbar { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; }
-.badge-blue { font-size: 11px; color: #3b82f6; background: #1e2d45; padding: 2px 10px; border-radius: 20px; border: 1px solid #2a4a7a; margin-left: auto; }
-.stepper { display: flex; align-items: center; margin-bottom: 24px; overflow-x: auto; }
-.si { display: flex; align-items: center; gap: 5px; font-size: 11px; color: #475569; white-space: nowrap; }
-.si.a { color: #e2e8f0; font-weight: 600; }
-.si.d { color: #3b82f6; }
-.sn { width: 20px; height: 20px; border-radius: 50%; background: #1e2535; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #475569; flex-shrink: 0; }
-.sn.a { background: #3b82f6; color: #fff; }
-.sn.d { background: #1e3a5f; color: #3b82f6; }
-.sdiv { flex: 1; height: 1px; background: #1e2535; margin: 0 6px; min-width: 8px; }
+body { font-family: system-ui, sans-serif; font-size: 14px; background: #0a0d14; color: #e2e8f0; padding: 24px; min-height: 100vh; }
+.wrap { max-width: 600px; margin: 0 auto; }
+.topbar { display: flex; align-items: center; gap: 10px; margin-bottom: 28px; }
+.badge { font-size: 11px; color: #3b82f6; background: #1e2d45; padding: 2px 10px; border-radius: 20px; border: 1px solid #2a4a7a; margin-left: auto; }
 .card { background: #0d1117; border: 1px solid #1e2535; border-radius: 10px; padding: 20px; margin-bottom: 14px; }
-.ctitle { font-size: 13px; font-weight: 600; margin-bottom: 6px; }
-.cdesc { font-size: 12px; color: #64748b; margin-bottom: 14px; line-height: 1.6; }
-.slabel { font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: #3b82f6; margin-bottom: 16px; }
-.field { margin-bottom: 12px; }
+.ctitle { font-size: 13px; font-weight: 600; margin-bottom: 8px; }
+.cdesc { font-size: 12px; color: #64748b; margin-bottom: 16px; line-height: 1.6; }
 .flabel { display: block; font-size: 12px; color: #94a3b8; margin-bottom: 5px; font-weight: 500; }
-input, select { width: 100%; padding: 9px 11px; border-radius: 6px; border: 1px solid #1e2535; background: #0a0d14; color: #e2e8f0; font-size: 13px; outline: none; font-family: monospace; }
-input:focus, select:focus { border-color: #3b82f6; }
-.btn { padding: 8px 16px; border-radius: 6px; border: 1px solid #1e2535; background: transparent; color: #94a3b8; cursor: pointer; font-size: 13px; font-weight: 600; font-family: system-ui; }
-.btn:hover:not(:disabled) { border-color: #3b82f6; color: #3b82f6; }
-.btn:disabled { opacity: 0.4; cursor: not-allowed; }
-.btnp { padding: 9px 18px; border-radius: 6px; background: #3b82f6; color: #fff; border: none; cursor: pointer; font-size: 13px; font-weight: 600; font-family: system-ui; }
+.field { margin-bottom: 14px; }
+select { width: 100%; padding: 9px 11px; border-radius: 6px; border: 1px solid #1e2535; background: #0a0d14; color: #e2e8f0; font-size: 13px; outline: none; }
+select:focus { border-color: #3b82f6; }
+.btnp { padding: 11px 20px; border-radius: 8px; background: #3b82f6; color: #fff; border: none; cursor: pointer; font-size: 13px; font-weight: 600; font-family: system-ui; width: 100%; }
+.btnp:hover:not(:disabled) { background: #2563eb; }
 .btnp:disabled { background: #1e2d45; color: #475569; cursor: not-allowed; }
+.btn { padding: 8px 16px; border-radius: 6px; border: 1px solid #1e2535; background: transparent; color: #94a3b8; cursor: pointer; font-size: 12px; font-weight: 600; font-family: system-ui; }
+.btn:hover { border-color: #3b82f6; color: #3b82f6; }
 .badge-green { display: inline-flex; align-items: center; gap: 6px; background: #0f2d1a; border: 1px solid #166534; color: #4ade80; border-radius: 20px; padding: 3px 12px; font-size: 11px; font-weight: 600; }
 .gdot { width: 6px; height: 6px; border-radius: 50%; background: #4ade80; flex-shrink: 0; }
-.hint { font-size: 11px; color: #475569; margin-top: 5px; line-height: 1.5; }
-.err { font-size: 11px; color: #f59e0b; margin-top: 6px; }
-.info-box { background: #0f1e35; border: 1px solid #1e3a5f; border-radius: 8px; padding: 12px 14px; font-size: 12px; color: #93c5fd; line-height: 1.8; margin-bottom: 12px; }
+.err { font-size: 11px; color: #f59e0b; margin-top: 8px; }
+.hint { font-size: 11px; color: #475569; margin-top: 5px; }
 .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid #1e2535; border-top-color: #3b82f6; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 6px; }
 @keyframes spin { to { transform: rotate(360deg); } }
-.pc { border: 1px solid #1e2535; border-radius: 10px; padding: 16px; margin-bottom: 12px; }
-.pc.ap { border-color: #166534; background: #0a1f12; }
-.pc-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
-.pc-name { font-size: 13px; font-weight: 600; }
-.ab { font-size: 10px; font-weight: 600; text-transform: uppercase; padding: 2px 8px; border-radius: 12px; flex-shrink: 0; }
-.ab.update { background: #1e2d45; color: #93c5fd; }
-.ab.create { background: #14532d; color: #86efac; }
-.ab.flag { background: #451a1a; color: #fca5a5; }
-.val-block { margin-bottom: 8px; }
-.val-label { font-size: 10px; color: #475569; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 3px; }
-.val-box { font-size: 12px; background: #0a0d14; border: 1px solid #1e2535; border-radius: 6px; padding: 7px 9px; color: #94a3b8; font-family: monospace; word-break: break-word; }
-.val-box.new { color: #e2e8f0; border-color: #1e3a5f; background: #0f1e35; }
-.rsn { font-size: 11px; color: #64748b; font-style: italic; margin-bottom: 10px; line-height: 1.5; }
-.sg { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin-bottom: 18px; }
-.ss { background: #0d1117; border: 1px solid #1e2535; border-radius: 8px; padding: 14px; text-align: center; }
-.sn2 { font-size: 26px; font-weight: 700; }
-.sl2 { font-size: 10px; color: #475569; text-transform: uppercase; letter-spacing: 0.06em; margin-top: 3px; }
-.pc-btns { display: flex; gap: 8px; flex-wrap: wrap; }
-.thinking { background: #0f1e35; border: 1px solid #1e3a5f; border-radius: 8px; padding: 20px; text-align: center; }
-.thinking p { font-size: 12px; color: #93c5fd; margin-top: 8px; }
-.big-spinner { width: 32px; height: 32px; border: 3px solid #1e2535; border-top-color: #3b82f6; border-radius: 50%; animation: spin 0.7s linear infinite; margin: 0 auto; }
-.log { font-size: 11px; color: #475569; margin-top: 6px; font-family: monospace; }
+.waiting { background: #0f1e35; border: 1px solid #1e3a5f; border-radius: 8px; padding: 14px 16px; font-size: 12px; color: #93c5fd; line-height: 1.8; margin-bottom: 14px; display: flex; align-items: flex-start; gap: 10px; }
+.big-spinner { width: 18px; height: 18px; border: 2px solid #1e2535; border-top-color: #3b82f6; border-radius: 50%; animation: spin 0.7s linear infinite; flex-shrink: 0; margin-top: 2px; }
+.success { background: #0a1f12; border: 1px solid #166534; border-radius: 10px; padding: 20px; margin-bottom: 14px; }
+.success-title { font-size: 15px; font-weight: 700; color: #4ade80; margin-bottom: 6px; }
+.success-desc { font-size: 12px; color: #86efac; line-height: 1.7; margin-bottom: 16px; }
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px; }
+.stat { background: #0d1117; border: 1px solid #1e2535; border-radius: 8px; padding: 12px; text-align: center; }
+.stat-n { font-size: 22px; font-weight: 700; }
+.stat-l { font-size: 10px; color: #475569; text-transform: uppercase; letter-spacing: 0.06em; margin-top: 3px; }
+.dl-btn { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 20px; border-radius: 8px; background: #14532d; border: 1px solid #166534; color: #4ade80; cursor: pointer; font-size: 13px; font-weight: 600; font-family: system-ui; width: 100%; margin-bottom: 10px; }
+.dl-btn:hover { background: #166534; }
+.copy-btn { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 20px; border-radius: 8px; background: transparent; border: 1px solid #1e2535; color: #94a3b8; cursor: pointer; font-size: 13px; font-weight: 600; font-family: system-ui; width: 100%; }
+.copy-btn:hover { border-color: #3b82f6; color: #3b82f6; }
+.instructions { background: #0f1e35; border: 1px solid #1e3a5f; border-radius: 8px; padding: 14px; font-size: 12px; color: #93c5fd; line-height: 1.9; margin-top: 14px; }
+.instructions ol { padding-left: 18px; }
+.instructions li { margin-bottom: 4px; }
+.row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
 </style>
 </head>
 <body>
 <div class="wrap">
-<div id="app"></div>
+  <div class="topbar">
+    <div style="width:8px;height:8px;border-radius:50%;background:#3b82f6"></div>
+    <span style="font-size:12px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#94a3b8">Workfront Exporter</span>
+    <span class="badge">Workfront → JSON → Claude</span>
+  </div>
+  <div id="app"></div>
 </div>
+
 <script>
-var WF_PROXY = "https://patient-violet-7e22.omarsanchezjasso.workers.dev";
-var STEPS = ["Connect","Select","Analyze","Review","Done"];
+var WF_DOMAIN = "prokarmaptrsd.sb01.workfront.com";
+var WF_CLIENT_ID = "b1ad0cca283bebd52bd8cdb38b9dc666";
+var WORKER = "https://patient-violet-7e22.omarsanchezjasso.workers.dev";
+var REDIRECT_URI = WORKER + "/callback";
 
 var state = {
-  step: 0,
-  apiKey: "", apiKeyIn: "",
-  wfUser: null, wfProjects: [],
-  connecting: false, wfErr: "", wfConnected: false,
-  folder: "", selProject: "",
-  proposals: [], approved: {}, results: [],
-  analyzing: false, analyzeLog: "",
-  applying: false, applyErr: ""
+  step: "connect", // connect | waiting | projects | exporting | done
+  token: null,
+  wfUser: null,
+  wfProjects: [],
+  selProject: "",
+  projectName: "",
+  exportData: null,
+  err: "",
+  codeVerifier: null,
+  pollInterval: null,
+  lastCode: null
 };
+
+// ── PKCE ──────────────────────────────────────────────────────────────────
+function genVerifier() {
+  var arr = new Uint8Array(48);
+  crypto.getRandomValues(arr);
+  return btoa(String.fromCharCode.apply(null, arr)).replace(/\+/g,"-").replace(/\//g,"_").replace(/=/g,"");
+}
+function genChallenge(v) {
+  return crypto.subtle.digest("SHA-256", new TextEncoder().encode(v)).then(function(d) {
+    return btoa(String.fromCharCode.apply(null, new Uint8Array(d))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=/g,"");
+  });
+}
+
+// ── OAuth flow ────────────────────────────────────────────────────────────
+async function startLogin() {
+  state.err = "";
+  state.lastCode = null;
+  var verifier = genVerifier();
+  state.codeVerifier = verifier;
+  var challenge = await genChallenge(verifier);
+  var params = new URLSearchParams({
+    client_id: WF_CLIENT_ID,
+    response_type: "code",
+    redirect_uri: REDIRECT_URI,
+    code_challenge: challenge,
+    code_challenge_method: "S256",
+    scope: "openid",
+    state: genVerifier().substring(0, 16)
+  });
+  state.step = "waiting";
+  render();
+  window.open("https://" + WF_DOMAIN + "/integrations/oauth2/authorize?" + params, "_blank");
+  startPolling();
+}
+
+function startPolling() {
+  // Poll the worker to check if token is stored after callback
+  state.pollInterval = setInterval(async function() {
+    try {
+      // Check if callback page has the code by fetching worker status
+      var r = await fetch(WORKER + "/token-status");
+      var d = await r.json();
+      if (d.hasToken) {
+        stopPolling();
+        // Get token from worker
+        var tr = await fetch(WORKER + "/get-token");
+        var td = await tr.json();
+        if (td.access_token) {
+          state.token = td.access_token;
+          await loadProjects();
+        }
+      }
+    } catch(e) {}
+  }, 2000);
+}
+
+function stopPolling() {
+  if (state.pollInterval) { clearInterval(state.pollInterval); state.pollInterval = null; }
+}
+
+// Also listen for postMessage (works when opened as popup in some browsers)
+window.addEventListener("message", function(e) {
+  if (e.data && e.data.type === "WF_CODE" && e.data.code && state.codeVerifier) {
+    stopPolling();
+    exchangeCode(e.data.code);
+  }
+});
+
+async function exchangeCode(code) {
+  try {
+    var r = await fetch(WORKER + "/integrations/oauth2/api/v1/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        grant_type: "authorization_code",
+        client_id: WF_CLIENT_ID,
+        redirect_uri: REDIRECT_URI,
+        code: code,
+        code_verifier: state.codeVerifier
+      })
+    });
+    var d = await r.json();
+    if (!d.access_token) throw new Error(d.error_description || "Token exchange failed");
+    state.token = d.access_token;
+    state.codeVerifier = null;
+    await loadProjects();
+  } catch(e) {
+    state.err = e.message;
+    state.step = "connect";
+    render();
+  }
+}
+
+async function loadProjects() {
+  try {
+    var r = await fetch(WORKER + "/attask/api/v15.0/project/search", {
+      headers: { "Authorization": "Bearer " + state.token }
+    });
+    var d = await r.json();
+    if (d.error) throw new Error(d.error.message);
+    state.wfProjects = d.data || [];
+    if (state.wfProjects.length > 0) state.selProject = state.wfProjects[0].ID;
+    try {
+      var ur = await fetch(WORKER + "/attask/api/v15.0/user/search?fields=name", {
+        headers: { "Authorization": "Bearer " + state.token }
+      });
+      var ud = await ur.json();
+      if (ud.data && ud.data[0]) state.wfUser = ud.data[0].name;
+    } catch(e) {}
+    state.step = "projects";
+  } catch(e) {
+    state.err = e.message;
+    state.step = "connect";
+  }
+  render();
+}
+
+async function exportProject() {
+  if (!state.selProject) return;
+  state.step = "exporting"; state.err = ""; render();
+  try {
+    var headers = { "Authorization": "Bearer " + state.token };
+
+    var pr = await fetch(WORKER + "/attask/api/v15.0/project/" + state.selProject + "?fields=name,description,status,percentComplete,plannedStartDate,plannedCompletionDate", { headers: headers });
+    var pd = await pr.json();
+    var project = pd.data || {};
+
+    var tr = await fetch(WORKER + "/attask/api/v15.0/task/search?projectID=" + state.selProject + "&fields=name,description,status,percentComplete,assignedTo:name,plannedStartDate,plannedCompletionDate", { headers: headers });
+    var td = await tr.json();
+    var tasks = td.data || [];
+
+    state.exportData = {
+      exportedAt: new Date().toISOString(),
+      project: {
+        id: project.ID,
+        name: project.name,
+        status: project.status,
+        percentComplete: project.percentComplete,
+        description: project.description,
+        plannedStartDate: project.plannedStartDate,
+        plannedCompletionDate: project.plannedCompletionDate
+      },
+      tasks: tasks.map(function(t) {
+        return {
+          id: t.ID,
+          name: t.name,
+          status: t.status,
+          percentComplete: t.percentComplete,
+          description: t.description || null,
+          assignedTo: t.assignedTo ? t.assignedTo.name : null,
+          plannedStartDate: t.plannedStartDate,
+          plannedCompletionDate: t.plannedCompletionDate
+        };
+      })
+    };
+    state.projectName = project.name;
+    state.step = "done";
+  } catch(e) {
+    state.err = e.message;
+    state.step = "projects";
+  }
+  render();
+}
+
+function downloadJSON() {
+  if (!state.exportData) return;
+  var blob = new Blob([JSON.stringify(state.exportData, null, 2)], { type: "application/json" });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement("a");
+  a.href = url;
+  a.download = "workfront-" + (state.projectName || "project").replace(/[^a-z0-9]/gi, "-").toLowerCase() + ".json";
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function copyJSON() {
+  if (!state.exportData) return;
+  navigator.clipboard.writeText(JSON.stringify(state.exportData, null, 2));
+  var btn = document.getElementById("copyBtn");
+  if (btn) { btn.textContent = "✅ Copied!"; setTimeout(function(){ render(); }, 1500); }
+}
 
 function esc(s) {
   if (!s) return "";
   return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
 }
 
-function wfGet(path) {
-  var sep = path.indexOf("?") >= 0 ? "&" : "?";
-  return fetch(WF_PROXY + path + sep + "apiKey=" + state.apiKey).then(function(r){ return r.json(); });
-}
-
-function wfPut(taskId, fields) {
-  var body = JSON.stringify(fields);
-  return fetch(WF_PROXY + "/attask/api/v15.0/task/" + taskId + "?apiKey=" + state.apiKey, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: body
-  }).then(function(r){ return r.json(); });
-}
-
-function wfPost(fields) {
-  var body = JSON.stringify(fields);
-  return fetch(WF_PROXY + "/attask/api/v15.0/task?apiKey=" + state.apiKey, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: body
-  }).then(function(r){ return r.json(); });
-}
-
-async function connectWF() {
-  if (!state.apiKeyIn.trim()) return;
-  state.apiKey = state.apiKeyIn.trim();
-  state.connecting = true; state.wfErr = ""; render();
-  try {
-    var d = await wfGet("/attask/api/v15.0/project/search");
-    if (d.error) throw new Error(d.error.message || "Invalid API key");
-    state.wfProjects = d.data || [];
-    state.wfConnected = true;
-    try {
-      var ud = await wfGet("/attask/api/v15.0/user/search?fields=name");
-      if (ud.data && ud.data[0]) state.wfUser = ud.data[0].name;
-    } catch(e) {}
-  } catch(e) { state.wfErr = e.message; state.apiKey = ""; }
-  state.connecting = false; render();
-}
-
-async function analyze() {
-  if (!state.folder || !state.selProject) return;
-  state.analyzing = true; state.analyzeLog = "Loading Workfront tasks..."; render();
-  try {
-    var d = await wfGet("/attask/api/v15.0/task/search?projectID=" + state.selProject + "&fields=name,description,status,percentComplete");
-    var tasks = d.data || [];
-    state.analyzeLog = "Calling Claude to analyze SharePoint + " + tasks.length + " tasks...";
-    render();
-
-    var systemPrompt = "You are a project intelligence assistant. You will be given a list of Workfront tasks and a SharePoint folder to analyze. Use the Microsoft 365 connector to read all files in the SharePoint folder, then analyze them against the Workfront tasks. Return ONLY a raw JSON array with no explanation and no code fences. Each item: {\"taskId\":\"<existing ID or null>\",\"taskName\":\"<name>\",\"action\":\"update|create|flag\",\"field\":\"status|description|percentComplete\",\"currentValue\":\"<current or empty>\",\"proposedValue\":\"<new value>\",\"reason\":\"<one sentence citing specific evidence>\"}";
-
-    var userPrompt = "Use your Microsoft 365 connector to search SharePoint for files in the folder: \"" + state.folder + "\"\nRead all files found (documents, transcripts, PDFs, notes).\n\nAnalyze them against these Workfront tasks:\n" + JSON.stringify(tasks.map(function(t){ return {id:t.ID,name:t.name,status:t.status,description:t.description,percentComplete:t.percentComplete}; }), null, 2) + "\n\nReturn ONLY a raw JSON array (no explanation, no code fences).";
-
-    var resp = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "anthropic-version": "2023-06-01",
-        "anthropic-beta": "mcp-client-2025-04-04"
-      },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-6",
-        max_tokens: 4000,
-        system: systemPrompt,
-        mcp_servers: [{
-          type: "url",
-          url: "https://microsoft365.mcp.claude.com/mcp",
-          name: "microsoft365"
-        }],
-        messages: [{ role: "user", content: userPrompt }]
-      })
-    });
-
-    var data = await resp.json();
-    state.analyzeLog = "Parsing Claude's response...";
-    render();
-
-    // Extract text from response
-    var text = "";
-    if (data.content) {
-      data.content.forEach(function(block) {
-        if (block.type === "text") text += block.text;
-      });
-    }
-
-    // Parse JSON array
-    var m = text.match(/\[[\s\S]*\]/);
-    if (!m) throw new Error("No JSON array in response. Got: " + text.substring(0, 200));
-    var proposals = JSON.parse(m[0]);
-    if (!Array.isArray(proposals)) throw new Error("Response is not an array");
-
-    state.proposals = proposals;
-    state.approved = {};
-    proposals.forEach(function(_, i){ state.approved[i] = true; });
-    state.step = 3;
-  } catch(e) {
-    state.analyzeLog = "Error: " + e.message;
-    setTimeout(function(){ state.analyzing = false; render(); }, 3000);
-    return;
-  }
-  state.analyzing = false; render();
-}
-
-async function applyChanges() {
-  var toApply = state.proposals.filter(function(_, i){ return state.approved[i]; });
-  if (!toApply.length) { state.step = 4; render(); return; }
-  state.applying = true; state.applyErr = ""; render();
-  var results = [];
-  for (var i = 0; i < toApply.length; i++) {
-    var p = toApply[i];
-    try {
-      if (p.action === "create") {
-        var r = await wfPost({ projectID: state.selProject, name: p.proposedValue, description: p.reason });
-        results.push({ taskName: p.taskName, ok: !r.error, action: "created", error: r.error ? r.error.message : null });
-      } else {
-        var field = p.field === "note" ? "description" : p.field;
-        var val = p.field === "note" ? "[FLAG] " + p.proposedValue : p.proposedValue;
-        var fields = {};
-        fields[field] = val;
-        var r2 = await wfPut(p.taskId, fields);
-        results.push({ taskName: p.taskName, ok: !r2.error, action: p.action, error: r2.error ? r2.error.message : null });
-      }
-    } catch(e) {
-      results.push({ taskName: p.taskName, ok: false, action: p.action, error: e.message });
-    }
-  }
-  state.results = results;
-  state.applying = false;
-  state.step = 4;
-  render();
-}
-
-function approve(i) { state.approved[i] = true; render(); }
-function reject(i) { state.approved[i] = false; render(); }
-
 function render() {
-  var s = state;
-  var h = '';
+  var h = "";
 
-  h += '<div class="topbar"><div style="width:8px;height:8px;border-radius:50%;background:#3b82f6"></div>';
-  h += '<span style="font-size:12px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#94a3b8">Project Intelligence</span>';
-  h += '<span class="badge-blue">SharePoint → Claude → Workfront</span></div>';
+  if (state.step === "connect") {
+    h += '<div class="card">';
+    h += '<div class="ctitle">⚡ Sign in with Workfront</div>';
+    h += '<div class="cdesc">Click below to sign in with your Workfront account. Any user with Workfront access can connect — no API key needed.</div>';
+    if (state.err) h += '<div class="err" style="margin-bottom:12px">⚠ ' + esc(state.err) + '</div>';
+    h += '<button class="btnp" onclick="startLogin()">Sign in with Workfront →</button>';
+    h += '</div>';
 
-  h += '<div class="stepper">';
-  for (var i = 0; i < STEPS.length; i++) {
-    var cls = s.step===i?"a":s.step>i?"d":"";
-    h += '<div class="si'+(cls?" "+cls:"")+'"><div class="sn'+(cls?" "+cls:"")+'>'+(s.step>i?"✓":i+1)+'</div>'+STEPS[i]+'</div>';
-    if (i < STEPS.length-1) h += '<div class="sdiv"></div>';
+  } else if (state.step === "waiting") {
+    h += '<div class="card">';
+    h += '<div class="waiting"><div class="big-spinner"></div>';
+    h += '<div>A new tab opened for Workfront login.<br>Sign in there and this page will connect automatically.</div></div>';
+    h += '<button class="btn" onclick="stopPolling();state.step=\'connect\';render()">Cancel</button>';
+    h += '</div>';
+
+  } else if (state.step === "projects") {
+    h += '<div class="card">';
+    h += '<div class="row">';
+    h += '<div class="badge-green"><span class="gdot"></span>Connected' + (state.wfUser ? " · " + esc(state.wfUser) : "") + '</div>';
+    h += '<button class="btn" onclick="state.step=\'connect\';state.token=null;state.wfProjects=[];render()">Sign out</button>';
+    h += '</div>';
+    h += '<div class="field"><label class="flabel">Select Project to Export</label>';
+    var opts = "";
+    state.wfProjects.forEach(function(p) { opts += '<option value="' + p.ID + '"' + (state.selProject === p.ID ? ' selected' : '') + '>' + esc(p.name) + '</option>'; });
+    h += '<select onchange="state.selProject=this.value">' + opts + '</select>';
+    h += '<div class="hint">' + state.wfProjects.length + ' projects available</div></div>';
+    if (state.err) h += '<div class="err">' + esc(state.err) + '</div>';
+    h += '<button class="btnp" ' + (!state.selProject ? 'disabled' : '') + ' onclick="exportProject()">Export to JSON →</button>';
+    h += '</div>';
+
+  } else if (state.step === "exporting") {
+    h += '<div class="card" style="text-align:center;padding:32px 20px">';
+    h += '<div class="big-spinner" style="margin:0 auto 12px"></div>';
+    h += '<div style="font-size:13px;color:#93c5fd">Loading project and tasks...</div>';
+    h += '</div>';
+
+  } else if (state.step === "done") {
+    var taskCount = state.exportData.tasks.length;
+    var doneTasks = state.exportData.tasks.filter(function(t){ return t.status === "CPL"; }).length;
+    var inpTasks = state.exportData.tasks.filter(function(t){ return t.status === "INP"; }).length;
+
+    h += '<div class="success">';
+    h += '<div class="success-title">✅ ' + esc(state.projectName) + '</div>';
+    h += '<div class="success-desc">Exported successfully. Download or copy the JSON, then paste it into Claude chat with your SharePoint folder name.</div>';
+    h += '<div class="stats">';
+    h += '<div class="stat"><div class="stat-n">' + taskCount + '</div><div class="stat-l">Tasks</div></div>';
+    h += '<div class="stat"><div class="stat-n">' + doneTasks + '</div><div class="stat-l">Complete</div></div>';
+    h += '<div class="stat"><div class="stat-n">' + inpTasks + '</div><div class="stat-l">In Progress</div></div>';
+    h += '</div>';
+    h += '<button class="dl-btn" onclick="downloadJSON()">⬇ Download JSON file</button>';
+    h += '<button class="copy-btn" id="copyBtn" onclick="copyJSON()">📋 Copy JSON to clipboard</button>';
+    h += '</div>';
+
+    h += '<div class="instructions"><strong style="color:#bfdbfe">Next — paste into Claude:</strong>';
+    h += '<ol style="margin-top:8px">';
+    h += '<li>Copy or download the JSON above</li>';
+    h += '<li>Go to Claude chat and say:<br><em style="color:#e2e8f0">"Here is my Workfront project: [paste JSON].<br>Read SharePoint folder <strong>01_internal</strong> and propose task updates."</em></li>';
+    h += '<li>Claude reads SharePoint via M365 and returns proposals</li>';
+    h += '</ol></div>';
+
+    h += '<div style="margin-top:14px">';
+    h += '<button class="btn" onclick="state.step=\'projects\';state.exportData=null;render()">← Export another project</button>';
+    h += '</div>';
   }
-  h += '</div>';
-
-  if (s.step===0) h += s0();
-  else if (s.step===1) h += s1();
-  else if (s.step===2) h += s2();
-  else if (s.step===3) h += s3();
-  else h += s4();
 
   document.getElementById("app").innerHTML = h;
-}
-
-function s0() {
-  var h = '<div class="slabel">Step 1 — Connect</div>';
-  h += '<div class="card"><div class="ctitle">⚡ Workfront</div>';
-  if (state.wfConnected) {
-    h += '<div class="badge-green"><span class="gdot"></span> Connected'+(state.wfUser?" · "+esc(state.wfUser):"")+' · '+state.wfProjects.length+' projects</div>';
-  } else if (state.connecting) {
-    h += '<div style="font-size:12px;color:#93c5fd"><span class="spinner"></span>Connecting...</div>';
-  } else {
-    h += '<div class="info-box"><strong style="color:#bfdbfe">Get your API key:</strong><ol style="padding-left:16px;margin-top:6px">';
-    h += '<li>Open Workfront → F12 → Console</li>';
-    h += '<li>Type <code style="background:#1e2535;padding:1px 4px;border-radius:3px">allow pasting</code> → Enter</li>';
-    h += '<li>Run: <code style="background:#1e2535;padding:1px 4px;border-radius:3px;word-break:break-all">fetch("/attask/api/v15.0/user?action=generateApiKey",{method:"PUT",credentials:"include"}).then(r=>r.json()).then(d=>console.log(d.data.result))</code></li>';
-    h += '<li>Copy the key</li></ol></div>';
-    h += '<div class="field"><label class="flabel">Workfront API Key</label>';
-    h += '<input type="password" id="apiKeyIn" placeholder="ftk2if..." onkeydown="if(event.key===\'Enter\')connectWF()" oninput="state.apiKeyIn=this.value;state.wfErr=\'\'"></div>';
-    if (state.wfErr) h += '<div class="err">⚠ '+esc(state.wfErr)+'</div>';
-    h += '<button class="btn" onclick="connectWF()">Connect →</button>';
-  }
-  h += '</div>';
-  h += '<button class="btnp" style="margin-top:4px" '+(state.wfConnected?'':'disabled')+' onclick="state.step=1;render()">Continue →</button>';
-  return h;
-}
-
-function s1() {
-  var opts = '<option value="">Select project...</option>';
-  state.wfProjects.forEach(function(p){ opts += '<option value="'+p.ID+'">'+esc(p.name)+'</option>'; });
-  var h = '<div class="slabel">Step 2 — Select</div>';
-  h += '<div class="card">';
-  h += '<div class="field"><label class="flabel">SharePoint Folder Name</label>';
-  h += '<input type="text" id="folderIn" placeholder="e.g. 01_internal" value="'+esc(state.folder)+'" oninput="state.folder=this.value">';
-  h += '<div class="hint">Claude will search this folder and read all files via M365 connector.</div></div>';
-  h += '<div class="field"><label class="flabel">Workfront Project</label>';
-  h += '<select onchange="state.selProject=this.value">'+opts+'</select>';
-  h += '<div class="hint">'+state.wfProjects.length+' projects loaded</div></div>';
-  h += '<button class="btnp" onclick="state.step=2;analyze()">Analyze →</button>';
-  h += '</div>';
-  return h;
-}
-
-function s2() {
-  var h = '<div class="slabel">Step 3 — Analyzing</div>';
-  h += '<div class="thinking"><div class="big-spinner"></div>';
-  h += '<p>'+esc(state.analyzeLog||"Working...")+'</p>';
-  h += '<div class="log">Claude is reading SharePoint and analyzing against Workfront tasks...</div></div>';
-  return h;
-}
-
-function s3() {
-  var cnt = Object.values(state.approved).filter(Boolean).length;
-  var h = '<div class="slabel">Step 4 — Review</div>';
-  h += '<div class="sg"><div class="ss"><div class="sn2">'+state.proposals.length+'</div><div class="sl2">Proposals</div></div>';
-  h += '<div class="ss"><div class="sn2">'+cnt+'</div><div class="sl2">Approved</div></div>';
-  h += '<div class="ss"><div class="sn2">'+(state.proposals.length-cnt)+'</div><div class="sl2">Skipped</div></div></div>';
-
-  state.proposals.forEach(function(p, i) {
-    var iap = state.approved[i];
-    h += '<div class="pc'+(iap?" ap":"")+'"><div class="pc-header">';
-    h += '<div class="pc-name">'+esc(p.taskName||"New Task")+'</div>';
-    h += '<span class="ab '+(p.action||"update")+'">'+esc(p.action)+'</span></div>';
-    h += '<div class="val-block"><div class="val-label">Current · '+esc(p.field||"")+'</div>';
-    h += '<div class="val-box">'+esc(p.currentValue||"—")+'</div></div>';
-    h += '<div class="val-block"><div class="val-label">↓ Proposed</div>';
-    h += '<div class="val-box new">'+esc(p.proposedValue)+'</div></div>';
-    h += '<div class="rsn">"'+esc(p.reason||"")+'"</div>';
-    h += '<div class="pc-btns">';
-    h += '<button class="btn" style="color:'+(iap?'#86efac':'#94a3b8')+';border-color:'+(iap?'#166534':'#1e2535')+';background:'+(iap?'#14532d':'transparent')+'" onclick="approve('+i+')">✅ Apply</button>';
-    h += '<button class="btn" style="color:'+(!iap?'#fca5a5':'#94a3b8')+';border-color:'+(!iap?'#991b1b':'#1e2535')+';background:'+(!iap?'#7f1d1d':'transparent')+'" onclick="reject('+i+')">❌ Skip</button>';
-    h += '</div></div>';
-  });
-
-  h += '<div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap">';
-  if (state.applying) {
-    h += '<button class="btnp" disabled><span class="spinner"></span>Applying...</button>';
-  } else {
-    h += '<button class="btnp" onclick="applyChanges()">Apply '+cnt+' changes to Workfront →</button>';
-  }
-  h += '<button class="btn" onclick="state.step=1;state.proposals=[];render()">← Start over</button></div>';
-  if (state.applyErr) h += '<div class="err" style="margin-top:8px">⚠ '+esc(state.applyErr)+'</div>';
-  return h;
-}
-
-function s4() {
-  var ok = state.results.filter(function(r){return r.ok;}).length;
-  var fail = state.results.filter(function(r){return !r.ok;}).length;
-  var skip = state.proposals.length - Object.values(state.approved).filter(Boolean).length;
-  var h = '<div class="slabel">Done</div>';
-  h += '<div class="sg"><div class="ss"><div class="sn2">'+ok+'</div><div class="sl2">Applied</div></div>';
-  h += '<div class="ss"><div class="sn2">'+fail+'</div><div class="sl2">Failed</div></div>';
-  h += '<div class="ss"><div class="sn2">'+skip+'</div><div class="sl2">Skipped</div></div></div>';
-  state.results.forEach(function(r) {
-    h += '<div class="card" style="display:flex;align-items:center;gap:12px;padding:12px 16px;margin-bottom:8px">';
-    h += '<span style="font-size:16px">'+(r.ok?'✅':'❌')+'</span>';
-    h += '<div><div style="font-size:13px;font-weight:600">'+esc(r.taskName||'')+'</div>';
-    h += '<div style="font-size:11px;color:#64748b">'+(r.ok?r.action:'Error: '+esc(r.error||''))+'</div></div></div>';
-  });
-  h += '<button class="btnp" style="margin-top:8px" onclick="state.step=1;state.proposals=[];state.results=[];state.approved={};render()">Run another analysis →</button>';
-  return h;
 }
 
 render();
