@@ -27,7 +27,6 @@ select:focus { border-color: #3b82f6; }
 .hint { font-size: 11px; color: #475569; margin-top: 5px; }
 .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid #1e2535; border-top-color: #3b82f6; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 6px; }
 @keyframes spin { to { transform: rotate(360deg); } }
-.waiting { background: #0f1e35; border: 1px solid #1e3a5f; border-radius: 8px; padding: 14px 16px; font-size: 12px; color: #93c5fd; line-height: 1.8; margin-bottom: 14px; display: flex; align-items: flex-start; gap: 10px; }
 .big-spinner { width: 18px; height: 18px; border: 2px solid #1e2535; border-top-color: #3b82f6; border-radius: 50%; animation: spin 0.7s linear infinite; flex-shrink: 0; margin-top: 2px; }
 .success { background: #0a1f12; border: 1px solid #166534; border-radius: 10px; padding: 20px; margin-bottom: 14px; }
 .success-title { font-size: 15px; font-weight: 700; color: #4ade80; margin-bottom: 6px; }
@@ -57,152 +56,54 @@ select:focus { border-color: #3b82f6; }
 </div>
 
 <script>
-var WF_DOMAIN = "prokarmaptrsd.sb01.workfront.com";
-var WF_CLIENT_ID = "b1ad0cca283bebd52bd8cdb38b9dc666";
 var WORKER = "https://patient-violet-7e22.omarsanchezjasso.workers.dev";
-var REDIRECT_URI = WORKER + "/callback";
+var API_KEY = "ftk2ifzzrulb1gjyg4jf1x6a31l1pnu9";
 
 var state = {
-  step: "connect", // connect | waiting | projects | exporting | done
-  token: null,
+  step: "projects",
   wfUser: null,
   wfProjects: [],
   selProject: "",
   projectName: "",
   exportData: null,
   err: "",
-  codeVerifier: null,
-  pollInterval: null,
-  lastCode: null
+  loading: false
 };
 
-// ── PKCE ──────────────────────────────────────────────────────────────────
-function genVerifier() {
-  var arr = new Uint8Array(48);
-  crypto.getRandomValues(arr);
-  return btoa(String.fromCharCode.apply(null, arr)).replace(/\+/g,"-").replace(/\//g,"_").replace(/=/g,"");
-}
-function genChallenge(v) {
-  return crypto.subtle.digest("SHA-256", new TextEncoder().encode(v)).then(function(d) {
-    return btoa(String.fromCharCode.apply(null, new Uint8Array(d))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=/g,"");
-  });
+function esc(s) {
+  if (!s) return "";
+  return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
 }
 
-// ── OAuth flow ────────────────────────────────────────────────────────────
-async function startLogin() {
-  state.err = "";
-  state.lastCode = null;
-  var verifier = genVerifier();
-  state.codeVerifier = verifier;
-  var challenge = await genChallenge(verifier);
-  var params = new URLSearchParams({
-    client_id: WF_CLIENT_ID,
-    response_type: "code",
-    redirect_uri: REDIRECT_URI,
-    code_challenge: challenge,
-    code_challenge_method: "S256",
-    scope: "openid",
-    state: genVerifier().substring(0, 16)
-  });
-  state.step = "waiting";
-  render();
-  window.open("https://" + WF_DOMAIN + "/integrations/oauth2/authorize?" + params, "_blank");
-  startPolling();
+function wfGet(path) {
+  var sep = path.indexOf("?") >= 0 ? "&" : "?";
+  return fetch(WORKER + path + sep + "apiKey=" + API_KEY).then(function(r){ return r.json(); });
 }
 
-function startPolling() {
-  // Poll the worker to check if token is stored after callback
-  state.pollInterval = setInterval(async function() {
-    try {
-      // Check if callback page has the code by fetching worker status
-      var r = await fetch(WORKER + "/token-status");
-      var d = await r.json();
-      if (d.hasToken) {
-        stopPolling();
-        // Get token from worker
-        var tr = await fetch(WORKER + "/get-token");
-        var td = await tr.json();
-        if (td.access_token) {
-          state.token = td.access_token;
-          await loadProjects();
-        }
-      }
-    } catch(e) {}
-  }, 2000);
-}
-
-function stopPolling() {
-  if (state.pollInterval) { clearInterval(state.pollInterval); state.pollInterval = null; }
-}
-
-// Also listen for postMessage (works when opened as popup in some browsers)
-window.addEventListener("message", function(e) {
-  if (e.data && e.data.type === "WF_CODE" && e.data.code && state.codeVerifier) {
-    stopPolling();
-    exchangeCode(e.data.code);
-  }
-});
-
-async function exchangeCode(code) {
+// Auto-load projects on page load
+async function init() {
+  state.loading = true; render();
   try {
-    var r = await fetch(WORKER + "/integrations/oauth2/api/v1/token", {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        grant_type: "authorization_code",
-        client_id: WF_CLIENT_ID,
-        redirect_uri: REDIRECT_URI,
-        code: code,
-        code_verifier: state.codeVerifier
-      })
-    });
-    var d = await r.json();
-    if (!d.access_token) throw new Error(d.error_description || "Token exchange failed");
-    state.token = d.access_token;
-    state.codeVerifier = null;
-    await loadProjects();
-  } catch(e) {
-    state.err = e.message;
-    state.step = "connect";
-    render();
-  }
-}
-
-async function loadProjects() {
-  try {
-    var r = await fetch(WORKER + "/attask/api/v15.0/project/search", {
-      headers: { "Authorization": "Bearer " + state.token }
-    });
-    var d = await r.json();
+    var d = await wfGet("/attask/api/v15.0/project/search");
     if (d.error) throw new Error(d.error.message);
     state.wfProjects = d.data || [];
+    if (state.wfProjects.length > 0) state.selProject = state.wfProjects[0].ID;
     try {
-      var ur = await fetch(WORKER + "/attask/api/v15.0/user/search?fields=name", {
-        headers: { "Authorization": "Bearer " + state.token }
-      });
-      var ud = await ur.json();
+      var ud = await wfGet("/attask/api/v15.0/user/search?fields=name");
       if (ud.data && ud.data[0]) state.wfUser = ud.data[0].name;
     } catch(e) {}
-    state.step = "projects";
-  } catch(e) {
-    state.err = e.message;
-    state.step = "connect";
-  }
-  render();
+  } catch(e) { state.err = e.message; }
+  state.loading = false; render();
 }
 
 async function exportProject() {
   if (!state.selProject) return;
   state.step = "exporting"; state.err = ""; render();
   try {
-    var headers = { "Authorization": "Bearer " + state.token };
-
-    var pr = await fetch(WORKER + "/attask/api/v15.0/project/" + state.selProject + "?fields=name,description,status,percentComplete,plannedStartDate,plannedCompletionDate", { headers: headers });
-    var pd = await pr.json();
+    var pd = await wfGet("/attask/api/v15.0/project/" + state.selProject + "?fields=name,description,status,percentComplete,plannedStartDate,plannedCompletionDate");
     var project = pd.data || {};
 
-    var tr = await fetch(WORKER + "/attask/api/v15.0/task/search?projectID=" + state.selProject + "&fields=name,description,status,percentComplete,assignedTo:name,plannedStartDate,plannedCompletionDate", { headers: headers });
-    var td = await tr.json();
+    var td = await wfGet("/attask/api/v15.0/task/search?projectID=" + state.selProject + "&fields=name,description,status,percentComplete,assignedTo:name,plannedStartDate,plannedCompletionDate");
     var tasks = td.data || [];
 
     state.exportData = {
@@ -256,42 +157,29 @@ function copyJSON() {
   if (btn) { btn.textContent = "✅ Copied!"; setTimeout(function(){ render(); }, 1500); }
 }
 
-function esc(s) {
-  if (!s) return "";
-  return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
-}
-
 function render() {
   var h = "";
 
-  if (state.step === "connect") {
-    h += '<div class="card">';
-    h += '<div class="ctitle">⚡ Sign in with Workfront</div>';
-    h += '<div class="cdesc">Click below to sign in with your Workfront account. Any user with Workfront access can connect — no API key needed.</div>';
-    if (state.err) h += '<div class="err" style="margin-bottom:12px">⚠ ' + esc(state.err) + '</div>';
-    h += '<button class="btnp" onclick="startLogin()">Sign in with Workfront →</button>';
-    h += '</div>';
-
-  } else if (state.step === "waiting") {
-    h += '<div class="card">';
-    h += '<div class="waiting"><div class="big-spinner"></div>';
-    h += '<div>A new tab opened for Workfront login.<br>Sign in there and this page will connect automatically.</div></div>';
-    h += '<button class="btn" onclick="stopPolling();state.step=\'connect\';render()">Cancel</button>';
+  if (state.loading) {
+    h += '<div class="card" style="text-align:center;padding:32px 20px">';
+    h += '<div class="big-spinner" style="margin:0 auto 12px"></div>';
+    h += '<div style="font-size:13px;color:#93c5fd">Connecting to Workfront...</div>';
     h += '</div>';
 
   } else if (state.step === "projects") {
     h += '<div class="card">';
     h += '<div class="row">';
     h += '<div class="badge-green"><span class="gdot"></span>Connected' + (state.wfUser ? " · " + esc(state.wfUser) : "") + '</div>';
-    h += '<button class="btn" onclick="state.step=\'connect\';state.token=null;state.wfProjects=[];render()">Sign out</button>';
     h += '</div>';
     h += '<div class="field"><label class="flabel">Select Project to Export</label>';
     var opts = "";
-    state.wfProjects.forEach(function(p) { opts += '<option value="' + p.ID + '"' + (state.selProject === p.ID ? ' selected' : '') + '>' + esc(p.name) + '</option>'; });
+    state.wfProjects.forEach(function(p) {
+      opts += '<option value="' + p.ID + '"' + (state.selProject === p.ID ? ' selected' : '') + '>' + esc(p.name) + '</option>';
+    });
     h += '<select onchange="state.selProject=this.value">' + opts + '</select>';
     h += '<div class="hint">' + state.wfProjects.length + ' projects available</div></div>';
-    if (state.err) h += '<div class="err">' + esc(state.err) + '</div>';
-    h += '<button class="btnp" ' + (!state.selProject ? 'disabled' : '') + ' onclick="exportProject()">Export to JSON →</button>';
+    if (state.err) h += '<div class="err">⚠ ' + esc(state.err) + '</div>';
+    h += '<button class="btnp" ' + (!state.selProject ? 'disabled' : '') + ' onclick="exportProject()">⬇ Export Project to JSON</button>';
     h += '</div>';
 
   } else if (state.step === "exporting") {
@@ -307,7 +195,7 @@ function render() {
 
     h += '<div class="success">';
     h += '<div class="success-title">✅ ' + esc(state.projectName) + '</div>';
-    h += '<div class="success-desc">Exported successfully. Download or copy the JSON, then paste it into Claude chat with your SharePoint folder name.</div>';
+    h += '<div class="success-desc">Exported successfully. Download or copy the JSON, then paste it into Claude chat.</div>';
     h += '<div class="stats">';
     h += '<div class="stat"><div class="stat-n">' + taskCount + '</div><div class="stat-l">Tasks</div></div>';
     h += '<div class="stat"><div class="stat-n">' + doneTasks + '</div><div class="stat-l">Complete</div></div>';
@@ -332,7 +220,7 @@ function render() {
   document.getElementById("app").innerHTML = h;
 }
 
-render();
+init();
 </script>
 </body>
 </html>
