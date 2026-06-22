@@ -180,7 +180,7 @@ function render() {
     h += '<select onchange="state.selProject=this.value;state.wfErr=\'\'">' + opts + '</select>';
     h += '<div class="hint">' + state.wfProjects.length + ' projects available</div></div>';
     if (state.wfErr) h += '<div class="err">⚠ ' + esc(state.wfErr) + '</div>';
-    h += '<button class="btnp" ' + (!state.selProject || state.loading ? 'disabled' : '') + ' onclick="exportProject()">';
+    h += '<button class="btnp" ' + (!state.selProject || state.loading ? 'enable' : '') + ' onclick="exportProject()">';
     h += state.loading ? '<span class="spinner"></span>Loading tasks...' : '⬇ Export Project to JSON';
     h += '</button></div>';
 
