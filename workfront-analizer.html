@@ -10,8 +10,6 @@ body { font-family: system-ui, sans-serif; font-size: 14px; background: #0a0d14;
 .topbar { display: flex; align-items: center; gap: 10px; margin-bottom: 28px; }
 .badge { font-size: 11px; color: #3b82f6; background: #1e2d45; padding: 2px 10px; border-radius: 20px; border: 1px solid #2a4a7a; margin-left: auto; }
 .card { background: #0d1117; border: 1px solid #1e2535; border-radius: 10px; padding: 20px; margin-bottom: 14px; }
-.ctitle { font-size: 13px; font-weight: 600; margin-bottom: 8px; }
-.cdesc { font-size: 12px; color: #64748b; margin-bottom: 16px; line-height: 1.6; }
 .flabel { display: block; font-size: 12px; color: #94a3b8; margin-bottom: 5px; font-weight: 500; }
 .field { margin-bottom: 14px; }
 select { width: 100%; padding: 9px 11px; border-radius: 6px; border: 1px solid #1e2535; background: #0a0d14; color: #e2e8f0; font-size: 13px; outline: none; }
@@ -25,9 +23,9 @@ select:focus { border-color: #3b82f6; }
 .gdot { width: 6px; height: 6px; border-radius: 50%; background: #4ade80; flex-shrink: 0; }
 .err { font-size: 11px; color: #f59e0b; margin-top: 8px; }
 .hint { font-size: 11px; color: #475569; margin-top: 5px; }
-.spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid #1e2535; border-top-color: #3b82f6; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 6px; }
-@keyframes spin { to { transform: rotate(360deg); } }
 .big-spinner { width: 18px; height: 18px; border: 2px solid #1e2535; border-top-color: #3b82f6; border-radius: 50%; animation: spin 0.7s linear infinite; flex-shrink: 0; margin-top: 2px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.waiting { background: #0f1e35; border: 1px solid #1e3a5f; border-radius: 8px; padding: 14px 16px; font-size: 12px; color: #93c5fd; line-height: 1.8; margin-bottom: 14px; display: flex; align-items: flex-start; gap: 10px; }
 .success { background: #0a1f12; border: 1px solid #166534; border-radius: 10px; padding: 20px; margin-bottom: 14px; }
 .success-title { font-size: 15px; font-weight: 700; color: #4ade80; margin-bottom: 6px; }
 .success-desc { font-size: 12px; color: #86efac; line-height: 1.7; margin-bottom: 16px; }
@@ -56,79 +54,151 @@ select:focus { border-color: #3b82f6; }
 </div>
 
 <script>
+var WF_DOMAIN = "prokarmaptrsd.sb01.workfront.com";
+var WF_CLIENT_ID = "b1ad0cca283bebd52bd8cdb38b9dc666";
 var WORKER = "https://patient-violet-7e22.omarsanchezjasso.workers.dev";
-var API_KEY = "ftk2ifzzrulb1gjyg4jf1x6a31l1pnu9";
+var REDIRECT_URI = WORKER + "/callback";
 
 var state = {
-  step: "projects",
+  step: "connect",
+  token: null,
   wfUser: null,
   wfProjects: [],
   selProject: "",
   projectName: "",
   exportData: null,
   err: "",
-  loading: false
+  codeVerifier: null,
+  pollInterval: null,
+  lastCode: null
 };
 
-function esc(s) {
-  if (!s) return "";
-  return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+function genVerifier() {
+  var arr = new Uint8Array(48);
+  crypto.getRandomValues(arr);
+  return btoa(String.fromCharCode.apply(null, arr)).replace(/\+/g,"-").replace(/\//g,"_").replace(/=/g,"");
+}
+function genChallenge(v) {
+  return crypto.subtle.digest("SHA-256", new TextEncoder().encode(v)).then(function(d) {
+    return btoa(String.fromCharCode.apply(null, new Uint8Array(d))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=/g,"");
+  });
 }
 
-function wfGet(path) {
-  var sep = path.indexOf("?") >= 0 ? "&" : "?";
-  return fetch(WORKER + path + sep + "apiKey=" + API_KEY).then(function(r){ return r.json(); });
+async function startLogin() {
+  state.err = "";
+  state.lastCode = null;
+  var verifier = genVerifier();
+  state.codeVerifier = verifier;
+  var challenge = await genChallenge(verifier);
+  var params = new URLSearchParams({
+    client_id: WF_CLIENT_ID,
+    response_type: "code",
+    redirect_uri: REDIRECT_URI,
+    code_challenge: challenge,
+    code_challenge_method: "S256",
+    scope: "openid",
+    state: genVerifier().substring(0, 16)
+  });
+  state.step = "waiting";
+  render();
+  window.open("https://" + WF_DOMAIN + "/integrations/oauth2/authorize?" + params, "_blank");
+  startPolling();
 }
 
-// Auto-load projects on page load
-async function init() {
-  state.loading = true; render();
+function startPolling() {
+  state.pollInterval = setInterval(async function() {
+    try {
+      var r = await fetch(WORKER + "/token-status");
+      var d = await r.json();
+      if (d.hasToken) {
+        stopPolling();
+        var tr = await fetch(WORKER + "/get-token");
+        var td = await tr.json();
+        if (td.access_token) {
+          state.token = td.access_token;
+          await loadProjects();
+        }
+      }
+    } catch(e) {}
+  }, 2000);
+}
+
+function stopPolling() {
+  if (state.pollInterval) { clearInterval(state.pollInterval); state.pollInterval = null; }
+}
+
+window.addEventListener("message", function(e) {
+  if (e.data && e.data.type === "WF_CODE" && e.data.code && state.codeVerifier) {
+    stopPolling();
+    exchangeCode(e.data.code);
+  }
+});
+
+async function exchangeCode(code) {
   try {
-    var d = await wfGet("/attask/api/v15.0/project/search");
+    var r = await fetch(WORKER + "/integrations/oauth2/api/v1/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        grant_type: "authorization_code",
+        client_id: WF_CLIENT_ID,
+        redirect_uri: REDIRECT_URI,
+        code: code,
+        code_verifier: state.codeVerifier
+      })
+    });
+    var d = await r.json();
+    if (!d.access_token) throw new Error(d.error_description || "Token exchange failed");
+    state.token = d.access_token;
+    state.codeVerifier = null;
+    await loadProjects();
+  } catch(e) {
+    state.err = e.message;
+    state.step = "connect";
+    render();
+  }
+}
+
+async function loadProjects() {
+  try {
+    var r = await fetch(WORKER + "/attask/api/v15.0/project/search", {
+      headers: { "Authorization": "Bearer " + state.token }
+    });
+    var d = await r.json();
     if (d.error) throw new Error(d.error.message);
     state.wfProjects = d.data || [];
+    // ── FIX: auto-select first project so Export button is enabled immediately ──
     if (state.wfProjects.length > 0) state.selProject = state.wfProjects[0].ID;
     try {
-      var ud = await wfGet("/attask/api/v15.0/user/search?fields=name");
+      var ur = await fetch(WORKER + "/attask/api/v15.0/user/search?fields=name", {
+        headers: { "Authorization": "Bearer " + state.token }
+      });
+      var ud = await ur.json();
       if (ud.data && ud.data[0]) state.wfUser = ud.data[0].name;
     } catch(e) {}
-  } catch(e) { state.err = e.message; }
-  state.loading = false; render();
+    state.step = "projects";
+  } catch(e) {
+    state.err = e.message;
+    state.step = "connect";
+  }
+  render();
 }
 
 async function exportProject() {
   if (!state.selProject) return;
   state.step = "exporting"; state.err = ""; render();
   try {
-    var pd = await wfGet("/attask/api/v15.0/project/" + state.selProject + "?fields=name,description,status,percentComplete,plannedStartDate,plannedCompletionDate");
+    var headers = { "Authorization": "Bearer " + state.token };
+    var pr = await fetch(WORKER + "/attask/api/v15.0/project/" + state.selProject + "?fields=name,description,status,percentComplete,plannedStartDate,plannedCompletionDate", { headers: headers });
+    var pd = await pr.json();
     var project = pd.data || {};
-
-    var td = await wfGet("/attask/api/v15.0/task/search?projectID=" + state.selProject + "&fields=name,description,status,percentComplete,assignedTo:name,plannedStartDate,plannedCompletionDate");
+    var tr = await fetch(WORKER + "/attask/api/v15.0/task/search?projectID=" + state.selProject + "&fields=name,description,status,percentComplete,assignedTo:name,plannedStartDate,plannedCompletionDate", { headers: headers });
+    var td = await tr.json();
     var tasks = td.data || [];
-
     state.exportData = {
       exportedAt: new Date().toISOString(),
-      project: {
-        id: project.ID,
-        name: project.name,
-        status: project.status,
-        percentComplete: project.percentComplete,
-        description: project.description,
-        plannedStartDate: project.plannedStartDate,
-        plannedCompletionDate: project.plannedCompletionDate
-      },
-      tasks: tasks.map(function(t) {
-        return {
-          id: t.ID,
-          name: t.name,
-          status: t.status,
-          percentComplete: t.percentComplete,
-          description: t.description || null,
-          assignedTo: t.assignedTo ? t.assignedTo.name : null,
-          plannedStartDate: t.plannedStartDate,
-          plannedCompletionDate: t.plannedCompletionDate
-        };
-      })
+      project: { id: project.ID, name: project.name, status: project.status, percentComplete: project.percentComplete, description: project.description, plannedStartDate: project.plannedStartDate, plannedCompletionDate: project.plannedCompletionDate },
+      tasks: tasks.map(function(t) { return { id: t.ID, name: t.name, status: t.status, percentComplete: t.percentComplete, description: t.description || null, assignedTo: t.assignedTo ? t.assignedTo.name : null, plannedStartDate: t.plannedStartDate, plannedCompletionDate: t.plannedCompletionDate }; })
     };
     state.projectName = project.name;
     state.step = "done";
@@ -157,70 +227,57 @@ function copyJSON() {
   if (btn) { btn.textContent = "✅ Copied!"; setTimeout(function(){ render(); }, 1500); }
 }
 
+function esc(s) {
+  if (!s) return "";
+  return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+
 function render() {
   var h = "";
-
-  if (state.loading) {
-    h += '<div class="card" style="text-align:center;padding:32px 20px">';
-    h += '<div class="big-spinner" style="margin:0 auto 12px"></div>';
-    h += '<div style="font-size:13px;color:#93c5fd">Connecting to Workfront...</div>';
-    h += '</div>';
-
+  if (state.step === "connect") {
+    h += '<div class="card"><div style="font-size:13px;font-weight:600;margin-bottom:8px">⚡ Sign in with Workfront</div>';
+    h += '<div style="font-size:12px;color:#64748b;margin-bottom:16px;line-height:1.6">Click below to sign in. Any user with Workfront access can connect.</div>';
+    if (state.err) h += '<div class="err" style="margin-bottom:12px">⚠ ' + esc(state.err) + '</div>';
+    h += '<button class="btnp" onclick="startLogin()">Sign in with Workfront →</button></div>';
+  } else if (state.step === "waiting") {
+    h += '<div class="card"><div class="waiting"><div class="big-spinner"></div>';
+    h += '<div>A new tab opened for Workfront login.<br>Sign in there and this page will connect automatically.</div></div>';
+    h += '<button class="btn" onclick="stopPolling();state.step=\'connect\';render()">Cancel</button></div>';
   } else if (state.step === "projects") {
-    h += '<div class="card">';
-    h += '<div class="row">';
+    h += '<div class="card"><div class="row">';
     h += '<div class="badge-green"><span class="gdot"></span>Connected' + (state.wfUser ? " · " + esc(state.wfUser) : "") + '</div>';
-    h += '</div>';
+    h += '<button class="btn" onclick="state.step=\'connect\';state.token=null;state.wfProjects=[];state.selProject=\'\';render()">Sign out</button></div>';
     h += '<div class="field"><label class="flabel">Select Project to Export</label>';
     var opts = "";
-    state.wfProjects.forEach(function(p) {
-      opts += '<option value="' + p.ID + '"' + (state.selProject === p.ID ? ' selected' : '') + '>' + esc(p.name) + '</option>';
-    });
+    state.wfProjects.forEach(function(p) { opts += '<option value="' + p.ID + '"' + (state.selProject === p.ID ? ' selected' : '') + '>' + esc(p.name) + '</option>'; });
     h += '<select onchange="state.selProject=this.value">' + opts + '</select>';
     h += '<div class="hint">' + state.wfProjects.length + ' projects available</div></div>';
-    if (state.err) h += '<div class="err">⚠ ' + esc(state.err) + '</div>';
-    h += '<button class="btnp" ' + (!state.selProject ? 'disabled' : '') + ' onclick="exportProject()">⬇ Export Project to JSON</button>';
-    h += '</div>';
-
+    if (state.err) h += '<div class="err">' + esc(state.err) + '</div>';
+    h += '<button class="btnp" ' + (!state.selProject ? 'disabled' : '') + ' onclick="exportProject()">⬇ Export Project to JSON</button></div>';
   } else if (state.step === "exporting") {
-    h += '<div class="card" style="text-align:center;padding:32px 20px">';
-    h += '<div class="big-spinner" style="margin:0 auto 12px"></div>';
-    h += '<div style="font-size:13px;color:#93c5fd">Loading project and tasks...</div>';
-    h += '</div>';
-
+    h += '<div class="card" style="text-align:center;padding:32px 20px"><div class="big-spinner" style="margin:0 auto 12px"></div>';
+    h += '<div style="font-size:13px;color:#93c5fd">Loading project and tasks...</div></div>';
   } else if (state.step === "done") {
     var taskCount = state.exportData.tasks.length;
     var doneTasks = state.exportData.tasks.filter(function(t){ return t.status === "CPL"; }).length;
     var inpTasks = state.exportData.tasks.filter(function(t){ return t.status === "INP"; }).length;
-
-    h += '<div class="success">';
-    h += '<div class="success-title">✅ ' + esc(state.projectName) + '</div>';
+    h += '<div class="success"><div class="success-title">✅ ' + esc(state.projectName) + '</div>';
     h += '<div class="success-desc">Exported successfully. Download or copy the JSON, then paste it into Claude chat.</div>';
-    h += '<div class="stats">';
-    h += '<div class="stat"><div class="stat-n">' + taskCount + '</div><div class="stat-l">Tasks</div></div>';
+    h += '<div class="stats"><div class="stat"><div class="stat-n">' + taskCount + '</div><div class="stat-l">Tasks</div></div>';
     h += '<div class="stat"><div class="stat-n">' + doneTasks + '</div><div class="stat-l">Complete</div></div>';
-    h += '<div class="stat"><div class="stat-n">' + inpTasks + '</div><div class="stat-l">In Progress</div></div>';
-    h += '</div>';
+    h += '<div class="stat"><div class="stat-n">' + inpTasks + '</div><div class="stat-l">In Progress</div></div></div>';
     h += '<button class="dl-btn" onclick="downloadJSON()">⬇ Download JSON file</button>';
-    h += '<button class="copy-btn" id="copyBtn" onclick="copyJSON()">📋 Copy JSON to clipboard</button>';
-    h += '</div>';
-
-    h += '<div class="instructions"><strong style="color:#bfdbfe">Next — paste into Claude:</strong>';
-    h += '<ol style="margin-top:8px">';
+    h += '<button class="copy-btn" id="copyBtn" onclick="copyJSON()">📋 Copy JSON to clipboard</button></div>';
+    h += '<div class="instructions"><strong style="color:#bfdbfe">Next — paste into Claude:</strong><ol style="margin-top:8px">';
     h += '<li>Copy or download the JSON above</li>';
-    h += '<li>Go to Claude chat and say:<br><em style="color:#e2e8f0">"Here is my Workfront project: [paste JSON].<br>Read SharePoint folder <strong>01_internal</strong> and propose task updates."</em></li>';
-    h += '<li>Claude reads SharePoint via M365 and returns proposals</li>';
-    h += '</ol></div>';
-
-    h += '<div style="margin-top:14px">';
-    h += '<button class="btn" onclick="state.step=\'projects\';state.exportData=null;render()">← Export another project</button>';
-    h += '</div>';
+    h += '<li>Go to Claude chat and say:<br><em style="color:#e2e8f0">"Here is my Workfront project: [paste JSON]. Read SharePoint folder <strong>01_internal</strong> and propose task updates."</em></li>';
+    h += '<li>Claude reads SharePoint via M365 and returns proposals</li></ol></div>';
+    h += '<div style="margin-top:14px"><button class="btn" onclick="state.step=\'projects\';state.exportData=null;render()">← Export another project</button></div>';
   }
-
   document.getElementById("app").innerHTML = h;
 }
 
-init();
+render();
 </script>
 </body>
 </html>
