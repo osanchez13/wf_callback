@@ -91,20 +91,14 @@ function wfGet(path) {
 }
 
 function wfPut(taskId, fields) {
-  var body = JSON.stringify(fields);
   return fetch(WF_PROXY + "/attask/api/v15.0/task/" + taskId + "?apiKey=" + state.apiKey, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: body
+    method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(fields)
   }).then(function(r){ return r.json(); });
 }
 
 function wfPost(fields) {
-  var body = JSON.stringify(fields);
   return fetch(WF_PROXY + "/attask/api/v15.0/task?apiKey=" + state.apiKey, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: body
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(fields)
   }).then(function(r){ return r.json(); });
 }
 
@@ -116,6 +110,8 @@ async function connectWF() {
     var d = await wfGet("/attask/api/v15.0/project/search");
     if (d.error) throw new Error(d.error.message || "Invalid API key");
     state.wfProjects = d.data || [];
+    // Auto-select first project so Analyze button is active immediately
+    if (state.wfProjects.length > 0) state.selProject = state.wfProjects[0].ID;
     state.wfConnected = true;
     try {
       var ud = await wfGet("/attask/api/v15.0/user/search?fields=name");
@@ -140,42 +136,23 @@ async function analyze() {
 
     var resp = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "anthropic-version": "2023-06-01",
-        "anthropic-beta": "mcp-client-2025-04-04"
-      },
+      headers: { "Content-Type": "application/json", "anthropic-version": "2023-06-01", "anthropic-beta": "mcp-client-2025-04-04" },
       body: JSON.stringify({
-        model: "claude-sonnet-4-6",
-        max_tokens: 4000,
+        model: "claude-sonnet-4-6", max_tokens: 4000,
         system: systemPrompt,
-        mcp_servers: [{
-          type: "url",
-          url: "https://microsoft365.mcp.claude.com/mcp",
-          name: "microsoft365"
-        }],
+        mcp_servers: [{ type: "url", url: "https://microsoft365.mcp.claude.com/mcp", name: "microsoft365" }],
         messages: [{ role: "user", content: userPrompt }]
       })
     });
 
     var data = await resp.json();
-    state.analyzeLog = "Parsing Claude's response...";
-    render();
-
-    // Extract text from response
+    state.analyzeLog = "Parsing Claude's response..."; render();
     var text = "";
-    if (data.content) {
-      data.content.forEach(function(block) {
-        if (block.type === "text") text += block.text;
-      });
-    }
-
-    // Parse JSON array
-    var m = text.match(/\[[\s\S]*\]/);
+    if (data.content) { data.content.forEach(function(block) { if (block.type === "text") text += block.text; }); }
+    var m = text.match(/\[\s\S]*\]/);
     if (!m) throw new Error("No JSON array in response. Got: " + text.substring(0, 200));
     var proposals = JSON.parse(m[0]);
     if (!Array.isArray(proposals)) throw new Error("Response is not an array");
-
     state.proposals = proposals;
     state.approved = {};
     proposals.forEach(function(_, i){ state.approved[i] = true; });
@@ -202,19 +179,13 @@ async function applyChanges() {
       } else {
         var field = p.field === "note" ? "description" : p.field;
         var val = p.field === "note" ? "[FLAG] " + p.proposedValue : p.proposedValue;
-        var fields = {};
-        fields[field] = val;
+        var fields = {}; fields[field] = val;
         var r2 = await wfPut(p.taskId, fields);
         results.push({ taskName: p.taskName, ok: !r2.error, action: p.action, error: r2.error ? r2.error.message : null });
       }
-    } catch(e) {
-      results.push({ taskName: p.taskName, ok: false, action: p.action, error: e.message });
-    }
+    } catch(e) { results.push({ taskName: p.taskName, ok: false, action: p.action, error: e.message }); }
   }
-  state.results = results;
-  state.applying = false;
-  state.step = 4;
-  render();
+  state.results = results; state.applying = false; state.step = 4; render();
 }
 
 function approve(i) { state.approved[i] = true; render(); }
@@ -223,11 +194,9 @@ function reject(i) { state.approved[i] = false; render(); }
 function render() {
   var s = state;
   var h = '';
-
   h += '<div class="topbar"><div style="width:8px;height:8px;border-radius:50%;background:#3b82f6"></div>';
   h += '<span style="font-size:12px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#94a3b8">Project Intelligence</span>';
   h += '<span class="badge-blue">SharePoint → Claude → Workfront</span></div>';
-
   h += '<div class="stepper">';
   for (var i = 0; i < STEPS.length; i++) {
     var cls = s.step===i?"a":s.step>i?"d":"";
@@ -235,13 +204,11 @@ function render() {
     if (i < STEPS.length-1) h += '<div class="sdiv"></div>';
   }
   h += '</div>';
-
   if (s.step===0) h += s0();
   else if (s.step===1) h += s1();
   else if (s.step===2) h += s2();
   else if (s.step===3) h += s3();
   else h += s4();
-
   document.getElementById("app").innerHTML = h;
 }
 
@@ -259,7 +226,7 @@ function s0() {
     h += '<li>Run: <code style="background:#1e2535;padding:1px 4px;border-radius:3px;word-break:break-all">fetch("/attask/api/v15.0/user?action=generateApiKey",{method:"PUT",credentials:"include"}).then(r=>r.json()).then(d=>console.log(d.data.result))</code></li>';
     h += '<li>Copy the key</li></ol></div>';
     h += '<div class="field"><label class="flabel">Workfront API Key</label>';
-    h += '<input type="password" id="apiKeyIn" placeholder="ftk2if..." onkeydown="if(event.key===\'Enter\')connectWF()" oninput="state.apiKeyIn=this.value;state.wfErr=\'\'"></div>';
+    h += '<input type="password" id="apiKeyIn" placeholder="ftk2if..." onkeydown="if(event.key==='Enter')connectWF()" oninput="state.apiKeyIn=this.value;state.wfErr=''"></div>';
     if (state.wfErr) h += '<div class="err">⚠ '+esc(state.wfErr)+'</div>';
     h += '<button class="btn" onclick="connectWF()">Connect →</button>';
   }
@@ -269,8 +236,8 @@ function s0() {
 }
 
 function s1() {
-  var opts = '<option value="">Select project...</option>';
-  state.wfProjects.forEach(function(p){ opts += '<option value="'+p.ID+'">'+esc(p.name)+'</option>'; });
+  var opts = '';
+  state.wfProjects.forEach(function(p){ opts += '<option value="'+p.ID+'"'+(state.selProject===p.ID?' selected':'')+'>'+esc(p.name)+'</option>'; });
   var h = '<div class="slabel">Step 2 — Select</div>';
   h += '<div class="card">';
   h += '<div class="field"><label class="flabel">SharePoint Folder Name</label>';
@@ -298,23 +265,19 @@ function s3() {
   h += '<div class="sg"><div class="ss"><div class="sn2">'+state.proposals.length+'</div><div class="sl2">Proposals</div></div>';
   h += '<div class="ss"><div class="sn2">'+cnt+'</div><div class="sl2">Approved</div></div>';
   h += '<div class="ss"><div class="sn2">'+(state.proposals.length-cnt)+'</div><div class="sl2">Skipped</div></div></div>';
-
   state.proposals.forEach(function(p, i) {
     var iap = state.approved[i];
     h += '<div class="pc'+(iap?" ap":"")+'"><div class="pc-header">';
     h += '<div class="pc-name">'+esc(p.taskName||"New Task")+'</div>';
     h += '<span class="ab '+(p.action||"update")+'">'+esc(p.action)+'</span></div>';
-    h += '<div class="val-block"><div class="val-label">Current · '+esc(p.field||"")+'</div>';
-    h += '<div class="val-box">'+esc(p.currentValue||"—")+'</div></div>';
-    h += '<div class="val-block"><div class="val-label">↓ Proposed</div>';
-    h += '<div class="val-box new">'+esc(p.proposedValue)+'</div></div>';
+    h += '<div class="val-block"><div class="val-label">Current · '+esc(p.field||"")+'</div><div class="val-box">'+esc(p.currentValue||"—")+'</div></div>';
+    h += '<div class="val-block"><div class="val-label">↓ Proposed</div><div class="val-box new">'+esc(p.proposedValue)+'</div></div>';
     h += '<div class="rsn">"'+esc(p.reason||"")+'"</div>';
     h += '<div class="pc-btns">';
     h += '<button class="btn" style="color:'+(iap?'#86efac':'#94a3b8')+';border-color:'+(iap?'#166534':'#1e2535')+';background:'+(iap?'#14532d':'transparent')+'" onclick="approve('+i+')">✅ Apply</button>';
     h += '<button class="btn" style="color:'+(!iap?'#fca5a5':'#94a3b8')+';border-color:'+(!iap?'#991b1b':'#1e2535')+';background:'+(!iap?'#7f1d1d':'transparent')+'" onclick="reject('+i+')">❌ Skip</button>';
     h += '</div></div>';
   });
-
   h += '<div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap">';
   if (state.applying) {
     h += '<button class="btnp" disabled><span class="spinner"></span>Applying...</button>';
