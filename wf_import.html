@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Workfront Import Tool</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,sans-serif;font-size:14px;background:#0a0d14;color:#e2e8f0;padding:24px;min-height:100vh}
+.wrap{max-width:960px;margin:0 auto}
+.topbar{display:flex;align-items:center;gap:10px;margin-bottom:28px}
+.topbar-badge{font-size:11px;color:#3b82f6;background:#1e2d45;padding:2px 10px;border-radius:20px;border:1px solid #2a4a7a;margin-left:auto}
+.card{background:#0d1117;border:1px solid #1e2535;border-radius:10px;padding:20px;margin-bottom:14px}
+.ctitle{font-size:13px;font-weight:600;margin-bottom:8px;color:#e2e8f0}
+.cdesc{font-size:12px;color:#64748b;margin-bottom:14px;line-height:1.6}
+label{display:block;font-size:12px;color:#94a3b8;margin-bottom:5px;font-weight:500}
+input[type=text],input[type=password],textarea,select{width:100%;padding:9px 11px;border-radius:6px;border:1px solid #1e2535;background:#0a0d14;color:#e2e8f0;font-size:13px;outline:none;font-family:monospace}
+input:focus,textarea:focus,select:focus{border-color:#3b82f6}
+textarea{resize:vertical;min-height:110px;font-size:12px}
+.field{margin-bottom:14px}
+.btn{padding:8px 16px;border-radius:6px;border:1px solid #1e2535;background:transparent;color:#94a3b8;cursor:pointer;font-size:13px;font-weight:600;font-family:system-ui}
+.btn:hover:not(:disabled){border-color:#3b82f6;color:#3b82f6}
+.btnp{padding:10px 20px;border-radius:6px;background:#3b82f6;color:#fff;border:none;cursor:pointer;font-size:13px;font-weight:600;font-family:system-ui}
+.btnp:hover:not(:disabled){background:#2563eb}
+.btnp:disabled{background:#1e2d45;color:#475569;cursor:not-allowed}
+.btnd{padding:8px 16px;border-radius:6px;background:#7f1d1d;border:1px solid #991b1b;color:#fca5a5;cursor:pointer;font-size:13px;font-weight:600;font-family:system-ui}
+.btnd:hover{background:#991b1b}
+.badge-connected{display:inline-flex;align-items:center;gap:6px;background:#0f2d1a;border:1px solid #166534;color:#4ade80;border-radius:20px;padding:3px 12px;font-size:11px;font-weight:600}
+.gdot{width:6px;height:6px;border-radius:50%;background:#4ade80;flex-shrink:0}
+.info-box{background:#0f1e35;border:1px solid #1e3a5f;border-radius:8px;padding:12px 14px;font-size:12px;color:#93c5fd;line-height:1.9;margin-bottom:14px}
+.info-box ol{padding-left:16px;margin-top:6px}
+.info-box code{background:#1e2535;padding:1px 5px;border-radius:3px;font-family:monospace;font-size:11px;word-break:break-all}
+.warn-box{background:#1c1108;border:1px solid #854d0e;border-radius:8px;padding:12px 14px;font-size:12px;color:#fcd34d;line-height:1.7;margin-bottom:14px}
+.err-box{background:#1c0a0a;border:1px solid #991b1b;border-radius:8px;padding:12px 14px;font-size:12px;color:#fca5a5;line-height:1.7;margin-bottom:14px}
+.ok-box{background:#0a1f12;border:1px solid #166534;border-radius:8px;padding:12px 14px;font-size:12px;color:#86efac;line-height:1.7;margin-bottom:14px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+.stat{background:#0a0d14;border:1px solid #1e2535;border-radius:8px;padding:10px;text-align:center}
+.stat-n{font-size:22px;font-weight:700;color:#e2e8f0}
+.stat-l{font-size:10px;color:#475569;text-transform:uppercase;letter-spacing:.06em;margin-top:3px}
+.stat-n.green{color:#4ade80}
+.stat-n.red{color:#f87171}
+.prog{height:5px;background:#1e2535;border-radius:3px;margin-bottom:14px;overflow:hidden}
+.prog-fill{height:100%;background:#3b82f6;border-radius:3px;transition:width .3s}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{background:#0f1624;color:#94a3b8;padding:8px 10px;text-align:left;font-weight:600;border-bottom:1px solid #1e2535}
+td{padding:7px 10px;border-bottom:1px solid #111827;vertical-align:top;word-break:break-all}
+tr:hover td{background:#0f1117}
+.pill{display:inline-block;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700}
+.pill-pending{background:#1e2535;color:#94a3b8}
+.pill-running{background:#1e3a5f;color:#93c5fd}
+.pill-success{background:#0f2d1a;color:#4ade80}
+.pill-error{background:#1c0a0a;color:#f87171}
+.wfid{color:#3b82f6;font-weight:600;font-family:monospace;font-size:11px}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.reg-box{font-family:monospace;font-size:11px;background:#060810;border:1px solid #1e2535;border-radius:6px;padding:10px;max-height:160px;overflow-y:auto;white-space:pre;color:#93c5fd}
+.spinner{display:inline-block;width:13px;height:13px;border:2px solid #1e2535;border-top-color:#3b82f6;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:5px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.curl-out{font-family:monospace;font-size:11px;background:#060810;color:#86efac;border-color:#1e2535;min-height:140px}
+details summary{cursor:pointer;font-size:12px;color:#3b82f6;font-weight:600}
+details[open] summary{margin-bottom:10px}
+.step{display:inline-block;background:#1e2d45;color:#93c5fd;border-radius:50%;width:20px;height:20px;text-align:center;line-height:20px;font-size:11px;font-weight:700;margin-right:6px;flex-shrink:0}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <div style="width:8px;height:8px;border-radius:50%;background:#3b82f6"></div>
+    <span style="font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#94a3b8">Workfront Import Tool</span>
+    <span class="topbar-badge">XLSX → JSON → Workfront</span>
+  </div>
+
+  <!-- STEP 1: CONNECT -->
+  <div class="card" id="card-connect">
+    <div class="ctitle"><span class="step">1</span>Connect to Workfront</div>
+    <div id="conn-body">
+      <div class="info-box">
+        <strong style="color:#bfdbfe">Get your API key (30 seconds):</strong>
+        <ol>
+          <li>Open your Workfront instance in a browser tab</li>
+          <li>Press <strong>F12</strong> → go to the <strong>Console</strong> tab</li>
+          <li>Type <code>allow pasting</code> → press Enter</li>
+          <li>Paste and run:<br><code>fetch("/attask/api/v15.0/user?action=generateApiKey",{method:"PUT",credentials:"include"}).then(r=>r.json()).then(d=>console.log(d.data.result))</code></li>
+          <li>Copy the key that appears and paste it below</li>
+        </ol>
+      </div>
+      <div class="field">
+        <label>API Key</label>
+        <input type="password" id="apikey-in" placeholder="Paste your API key here…" onkeydown="if(event.key==='Enter')connect()">
+      </div>
+      <div id="conn-err" class="err-box" style="display:none"></div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="btnp" id="btn-connect" onclick="connect()">Connect →</button>
+        <span id="conn-spinner" style="display:none"><span class="spinner"></span><span style="font-size:12px;color:#93c5fd">Connecting…</span></span>
+      </div>
+    </div>
+    <div id="conn-ok" style="display:none">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <span class="badge-connected"><span class="gdot"></span><span id="conn-user">Connected</span></span>
+        <button class="btn" onclick="disconnect()" style="font-size:11px;padding:4px 10px">Disconnect</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 2: LOAD JSON -->
+  <div class="card">
+    <div class="ctitle"><span class="step">2</span>Load payload JSON</div>
+    <div class="warn-box">
+      Run files in order: <strong>01_groups → 02_teams → 03_job_roles → 04_users → 05_portfolios → 06_programs → 07_templates → 08_projects → 09_tasks → 10_issues</strong><br>
+      Created Workfront IDs are saved in the registry after each file and used to resolve parent references in the next.
+    </div>
+    <div class="field">
+      <label>Load from file</label>
+      <input type="file" accept=".json" onchange="loadFile(event)" style="border:none;background:none;padding:0;font-size:13px;color:#94a3b8">
+    </div>
+    <div class="field">
+      <label>Or paste JSON directly</label>
+      <textarea id="json-in" placeholder='{"meta":{...},"payloads":[]}'></textarea>
+    </div>
+    <div class="toolbar">
+      <button class="btnp" onclick="parsePayload()">Parse & preview</button>
+      <button class="btn" onclick="clearAll()">Clear</button>
+    </div>
+  </div>
+
+  <!-- STEP 3: PREVIEW & RUN -->
+  <div class="card" id="preview-card" style="display:none">
+    <div class="ctitle" style="display:flex;justify-content:space-between;align-items:center">
+      <span><span class="step">3</span>Preview & execute</span>
+      <span id="obj-label" style="font-size:11px;color:#3b82f6;font-family:monospace"></span>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><div class="stat-n" id="s-total">0</div><div class="stat-l">Total</div></div>
+      <div class="stat"><div class="stat-n" id="s-pending">0</div><div class="stat-l">Pending</div></div>
+      <div class="stat"><div class="stat-n green" id="s-ok">0</div><div class="stat-l">Created</div></div>
+      <div class="stat"><div class="stat-n red" id="s-err">0</div><div class="stat-l">Errors</div></div>
+    </div>
+
+    <div class="prog"><div class="prog-fill" id="prog" style="width:0%"></div></div>
+
+    <div class="toolbar">
+      <button class="btnp" id="btn-run" onclick="runAll()">▶ Run all</button>
+      <button class="btn" onclick="copyAllCurl()">📋 Copy all as cURL</button>
+      <button class="btnd" onclick="resetResults()">Reset</button>
+    </div>
+
+    <div id="unresolved-warn" class="warn-box" style="display:none"></div>
+    <div id="run-result" style="display:none"></div>
+
+    <div style="overflow-x:auto">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:24px">#</th>
+            <th style="width:150px">RowKey</th>
+            <th>Name</th>
+            <th style="width:76px">Status</th>
+            <th style="width:200px">WF ID</th>
+            <th>Response</th>
+            <th style="width:88px">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="tbl-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ID REGISTRY -->
+  <div class="card">
+    <div class="ctitle" style="display:flex;justify-content:space-between;align-items:center">
+      <span><span class="step">4</span>ID registry</span>
+      <div style="display:flex;gap:6px">
+        <button class="btn" style="font-size:11px;padding:4px 10px" onclick="exportReg()">Export</button>
+        <button class="btn" style="font-size:11px;padding:4px 10px" onclick="importReg()">Import</button>
+        <button class="btnd" style="font-size:11px;padding:4px 10px" onclick="clearReg()">Clear</button>
+      </div>
+    </div>
+    <div class="cdesc">RowKey → Workfront ID. Auto-populated as records are created. Persists in browser storage across sessions.</div>
+    <div class="reg-box" id="reg-display">No IDs yet.</div>
+  </div>
+
+  <!-- CURL FALLBACK -->
+  <div class="card">
+    <details>
+      <summary>📟 cURL fallback reference</summary>
+      <textarea class="curl-out" id="curl-out" readonly></textarea>
+    </details>
+  </div>
+
+</div>
+
+<script>
+const PROXY = "https://patient-violet-7e22.omarsanchezjasso.workers.dev";
+const API_VER = "v15.0";
+
+let apiKey = "";
+let payloads = [];
+let currentObjCode = "";
+let rowStatuses = {};
+let running = false;
+let registry = JSON.parse(localStorage.getItem("wf_reg") || "{}");
+
+// ── Connection ───────────────────────────────────────────────────────────────
+async function connect() {
+  const key = document.getElementById("apikey-in").value.trim();
+  if (!key) return;
+  setConnecting(true);
+  try {
+    const r = await fetch(`${PROXY}/attask/api/${API_VER}/user/search?apiKey=${key}&fields=name&$$LIMIT=1`);
+    const d = await r.json();
+    if (d.error) throw new Error(d.error.message || "Invalid API key");
+    apiKey = key;
+    const name = d.data && d.data[0] ? d.data[0].name : "Connected";
+    showConnected(name);
+  } catch(e) {
+    showConnErr(e.message);
+  }
+  setConnecting(false);
+}
+
+function disconnect() {
+  apiKey = "";
+  document.getElementById("apikey-in").value = "";
+  document.getElementById("conn-body").style.display = "";
+  document.getElementById("conn-ok").style.display = "none";
+  document.getElementById("conn-err").style.display = "none";
+}
+
+function setConnecting(v) {
+  document.getElementById("btn-connect").disabled = v;
+  document.getElementById("conn-spinner").style.display = v ? "" : "none";
+}
+
+function showConnected(name) {
+  document.getElementById("conn-user").textContent = name;
+  document.getElementById("conn-body").style.display = "none";
+  document.getElementById("conn-ok").style.display = "";
+  document.getElementById("conn-err").style.display = "none";
+}
+
+function showConnErr(msg) {
+  const el = document.getElementById("conn-err");
+  el.style.display = "";
+  el.textContent = "⚠ " + msg;
+}
+
+// ── Registry ─────────────────────────────────────────────────────────────────
+function saveReg() {
+  localStorage.setItem("wf_reg", JSON.stringify(registry));
+  renderReg();
+}
+
+function renderReg() {
+  const keys = Object.keys(registry);
+  document.getElementById("reg-display").textContent = keys.length
+    ? keys.map(k => (k + " ").padEnd(32, " ") + "→  " + registry[k]).join("\n")
+    : "No IDs yet.";
+}
+
+function clearReg() {
+  if (!confirm("Clear entire ID registry?")) return;
+  registry = {};
+  saveReg();
+}
+
+function exportReg() {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(registry, null, 2)], {type:"application/json"}));
+  a.download = "wf_id_registry.json";
+  a.click();
+}
+
+function importReg() {
+  const inp = document.createElement("input");
+  inp.type = "file"; inp.accept = ".json";
+  inp.onchange = e => {
+    const r = new FileReader();
+    r.onload = ev => {
+      try {
+        const d = JSON.parse(ev.target.result);
+        registry = {...registry, ...d};
+        saveReg();
+        alert(`Imported ${Object.keys(d).length} IDs.`);
+      } catch { alert("Invalid JSON."); }
+    };
+    r.readAsText(e.target.files[0]);
+  };
+  inp.click();
+}
+
+// ── File loading ──────────────────────────────────────────────────────────────
+function loadFile(e) {
+  const f = e.target.files[0];
+  if (!f) return;
+  const r = new FileReader();
+  r.onload = ev => { document.getElementById("json-in").value = ev.target.result; };
+  r.readAsText(f);
+}
+
+// ── Payload parsing ───────────────────────────────────────────────────────────
+function parsePayload() {
+  const raw = document.getElementById("json-in").value.trim();
+  if (!raw) { alert("Paste or load a JSON file first."); return; }
+  let data;
+  try { data = JSON.parse(raw); } catch(e) { alert("Invalid JSON: " + e.message); return; }
+  payloads = data.payloads || [];
+  currentObjCode = (data.meta && data.meta.objCode) || "?";
+  document.getElementById("obj-label").textContent = currentObjCode + " · " + payloads.length + " record(s)";
+  document.getElementById("preview-card").style.display = "";
+
+  // Unresolved check
+  const unres = [];
+  payloads.forEach(p => {
+    Object.values(p).forEach(v => {
+      if (v && typeof v === "object" && v._UNRESOLVED_ROWKEY)
+        unres.push(`${p._rowkey} → needs parent ID for RowKey "${v._UNRESOLVED_ROWKEY}"`);
+    });
+  });
+  const uw = document.getElementById("unresolved-warn");
+  if (unres.length) {
+    uw.style.display = "";
+    uw.innerHTML = `<strong>⚠ ${unres.length} unresolved parent reference(s):</strong><br>` +
+      unres.map(u => "• " + u).join("<br>") +
+      "<br><br>Run the parent object file first so the IDs are written to the registry, then reload this file.";
+  } else { uw.style.display = "none"; }
+
+  renderTable();
+  updateStats();
+  updateCurlRef(data.meta);
+}
+
+function resolvePayload(p) {
+  const out = {};
+  for (const [k, v] of Object.entries(p)) {
+    if (k.startsWith("_")) continue;
+    if (v && typeof v === "object" && v._UNRESOLVED_ROWKEY) {
+      out[k] = registry[v._UNRESOLVED_ROWKEY] || `__UNRESOLVED:${v._UNRESOLVED_ROWKEY}__`;
+    } else if (v && typeof v === "object" && v._EMAIL_LOOKUP) {
+      out[k] = registry[v._EMAIL_LOOKUP] || `__EMAIL_LOOKUP:${v._EMAIL_LOOKUP}__`;
+    } else {
+      out[k] = v;
+    }
+  }
+  return out;
+}
+
+// ── Table ─────────────────────────────────────────────────────────────────────
+function renderTable() {
+  rowStatuses = {};
+  const tbody = document.getElementById("tbl-body");
+  tbody.innerHTML = "";
+  payloads.forEach((p, i) => {
+    rowStatuses[i] = "pending";
+    const tr = document.createElement("tr");
+    tr.id = "row-" + i;
+    tr.innerHTML = `
+      <td>${i+1}</td>
+      <td style="font-family:monospace;font-size:11px;color:#64748b">${p._rowkey || "—"}</td>
+      <td style="color:#e2e8f0">${esc(p.name || p.firstName || "—")}</td>
+      <td><span class="pill pill-pending" id="st-${i}">pending</span></td>
+      <td class="wfid" id="wfid-${i}">—</td>
+      <td style="color:#64748b;font-size:11px" id="resp-${i}">—</td>
+      <td>
+        <button class="btn" style="padding:3px 8px;font-size:11px" onclick="runOne(${i})">Run</button>
+        <button class="btn" style="padding:3px 8px;font-size:11px" onclick="copyCurl(${i})">cURL</button>
+      </td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+function updateStats() {
+  const vals = Object.values(rowStatuses);
+  const total = payloads.length;
+  document.getElementById("s-total").textContent = total;
+  document.getElementById("s-pending").textContent = vals.filter(v => v === "pending").length;
+  document.getElementById("s-ok").textContent = vals.filter(v => v === "success").length;
+  document.getElementById("s-err").textContent = vals.filter(v => v === "error").length;
+  const done = vals.filter(v => v !== "pending").length;
+  document.getElementById("prog").style.width = total ? Math.round(done/total*100) + "%" : "0%";
+}
+
+function setRow(i, status, wfId, msg) {
+  rowStatuses[i] = status;
+  const badge = document.getElementById("st-" + i);
+  badge.className = "pill pill-" + status;
+  badge.textContent = status;
+  if (wfId) document.getElementById("wfid-" + i).textContent = wfId;
+  if (msg !== undefined) document.getElementById("resp-" + i).textContent = msg;
+  updateStats();
+}
+
+// ── API ───────────────────────────────────────────────────────────────────────
+async function apiCreate(objCode, fields) {
+  const url = `${PROXY}/attask/api/${API_VER}/${objCode.toLowerCase()}?apiKey=${apiKey}`;
+  const body = new URLSearchParams();
+  for (const [k, v] of Object.entries(fields)) {
+    body.append(k, typeof v === "object" ? JSON.stringify(v) : String(v));
+  }
+  const res = await fetch(url, {method:"POST", body});
+  const json = await res.json();
+  if (!res.ok || json.error) throw new Error(json.error?.message || JSON.stringify(json.error) || res.statusText);
+  return json.data;
+}
+
+async function runOne(i) {
+  if (!apiKey) { alert("Connect to Workfront first (Step 1)."); return; }
+  const p = payloads[i];
+  const fields = resolvePayload(p);
+  setRow(i, "running", "", "");
+  try {
+    const data = await apiCreate(currentObjCode, fields);
+    const id = data.ID;
+    if (p._rowkey && id) { registry[p._rowkey] = id; saveReg(); }
+    setRow(i, "success", id, "Created " + new Date().toLocaleTimeString());
+  } catch(e) {
+    setRow(i, "error", "", e.message);
+  }
+}
+
+async function runAll() {
+  if (!apiKey) { alert("Connect to Workfront first (Step 1)."); return; }
+  if (running) return;
+  running = true;
+  document.getElementById("btn-run").disabled = true;
+  document.getElementById("run-result").style.display = "none";
+  for (let i = 0; i < payloads.length; i++) {
+    if (rowStatuses[i] === "success") continue;
+    await runOne(i);
+    await new Promise(r => setTimeout(r, 350));
+  }
+  running = false;
+  document.getElementById("btn-run").disabled = false;
+  const ok = Object.values(rowStatuses).filter(v => v === "success").length;
+  const errs = Object.values(rowStatuses).filter(v => v === "error").length;
+  const el = document.getElementById("run-result");
+  el.style.display = "";
+  el.className = errs ? "err-box" : "ok-box";
+  el.textContent = `Run complete: ${ok} created${errs ? ", " + errs + " error(s) — check response column" : ""}. Load the next file to continue.`;
+}
+
+function resetResults() {
+  payloads.forEach((_, i) => setRow(i, "pending", "", "—"));
+  document.getElementById("run-result").style.display = "none";
+}
+
+function clearAll() {
+  payloads = [];
+  document.getElementById("json-in").value = "";
+  document.getElementById("preview-card").style.display = "none";
+}
+
+// ── cURL ──────────────────────────────────────────────────────────────────────
+function buildCurl(i) {
+  const p = payloads[i];
+  const fields = resolvePayload(p);
+  const obj = currentObjCode.toLowerCase();
+  const params = Object.entries(fields)
+    .map(([k, v]) => `  --data-urlencode '${k}=${typeof v === "object" ? JSON.stringify(v) : v}'`)
+    .join(" \\\n");
+  return `# ${p._rowkey || ""} — ${p.name || ""}\ncurl -s -X POST \\\n  '${PROXY}/attask/api/${API_VER}/${obj}?apiKey=YOUR_API_KEY' \\\n${params}\n`;
+}
+
+function copyCurl(i) {
+  navigator.clipboard.writeText(buildCurl(i)).then(() => alert("cURL copied!"));
+}
+
+function copyAllCurl() {
+  const all = payloads.map((_, i) => buildCurl(i)).join("\n\n");
+  navigator.clipboard.writeText(all).then(() => alert(`${payloads.length} cURL command(s) copied!`));
+}
+
+function updateCurlRef(meta) {
+  if (!meta) return;
+  const obj = (meta.objCode || "?").toLowerCase();
+  document.getElementById("curl-out").value =
+    `# Create one record\ncurl -s -X POST \\\n  '${PROXY}/attask/api/${API_VER}/${obj}?apiKey=YOUR_API_KEY' \\\n  --data-urlencode 'name=Example' \\\n  --data-urlencode 'description=My description'\n\n# Verify it exists\ncurl -s '${PROXY}/attask/api/${API_VER}/${obj}/search?name=Example&apiKey=YOUR_API_KEY&fields=ID,name'`;
+}
+
+function esc(s) { return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+
+// init
+renderReg();
+</script>
+</body>
+</html>
