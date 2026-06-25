@@ -392,12 +392,12 @@ function setRow(i, status, wfId, msg) {
 
 // ── API ───────────────────────────────────────────────────────────────────────
 async function apiCreate(objCode, fields) {
-  const params = new URLSearchParams({apiKey});
+  const params = new URLSearchParams({apiKey, method: "POST"});
   for (const [k, v] of Object.entries(fields)) {
     params.append(k, typeof v === "object" ? JSON.stringify(v) : String(v));
   }
   const url = `${PROXY}/attask/api/${API_VER}/${objCode.toLowerCase()}?${params.toString()}`;
-  const res = await fetch(url, {method:"POST"});
+  const res = await fetch(url, {method:"GET"});
   const json = await res.json();
   if (!res.ok || json.error) throw new Error(json.error?.message || JSON.stringify(json.error) || res.statusText);
   return json.data;
