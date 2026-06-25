@@ -392,12 +392,12 @@ function setRow(i, status, wfId, msg) {
 
 // ── API ───────────────────────────────────────────────────────────────────────
 async function apiCreate(objCode, fields) {
-  const url = `${PROXY}/attask/api/${API_VER}/${objCode.toLowerCase()}?apiKey=${apiKey}`;
-  const body = new URLSearchParams();
+  const params = new URLSearchParams({apiKey});
   for (const [k, v] of Object.entries(fields)) {
-    body.append(k, typeof v === "object" ? JSON.stringify(v) : String(v));
+    params.append(k, typeof v === "object" ? JSON.stringify(v) : String(v));
   }
-  const res = await fetch(url, {method:"POST", body});
+  const url = `${PROXY}/attask/api/${API_VER}/${objCode.toLowerCase()}?${params.toString()}`;
+  const res = await fetch(url, {method:"POST"});
   const json = await res.json();
   if (!res.ok || json.error) throw new Error(json.error?.message || JSON.stringify(json.error) || res.statusText);
   return json.data;
@@ -456,9 +456,9 @@ function buildCurl(i) {
   const fields = resolvePayload(p);
   const obj = currentObjCode.toLowerCase();
   const params = Object.entries(fields)
-    .map(([k, v]) => `  --data-urlencode '${k}=${typeof v === "object" ? JSON.stringify(v) : v}'`)
-    .join(" \\\n");
-  return `# ${p._rowkey || ""} — ${p.name || ""}\ncurl -s -X POST \\\n  '${PROXY}/attask/api/${API_VER}/${obj}?apiKey=YOUR_API_KEY' \\\n${params}\n`;
+    .map(([k, v]) => encodeURIComponent(k) + "=" + encodeURIComponent(typeof v === "object" ? JSON.stringify(v) : v))
+    .join("&");
+  return `# ${p._rowkey || ""} -- ${p.name || ""}\ncurl -s -X POST '${PROXY}/attask/api/${API_VER}/${obj}?apiKey=YOUR_API_KEY&${params}'\n`;
 }
 
 function copyCurl(i) {
